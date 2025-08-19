@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">📅 Cadastrar Disponibilidade Semanal</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('submit_availability') }}">
+                    <!-- Nome do usuário -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label fw-bold">👤 Nome completo:</label>
+                            <input type="text" class="form-control form-control-lg" id="name" name="name"
+                                   placeholder="Seu nome" required>
+                        </div>
+                    </div>
+
+                    <!-- Dias da semana -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">📆 Selecione os dias disponíveis:</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for day, day_name in weekdays %}
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input day-checkbox" type="checkbox"
+                                           id="day-{{ day }}" data-day="{{ day }}">
+                                    <label class="form-check-label" for="day-{{ day }}">
+                                        {{ day_name[:3] }} <!-- Mostra apenas abreviação -->
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Container para horários dos dias -->
+                    <div id="day-containers">
+                        {% for day, day_name in weekdays %}
+                        <div class="day-container mb-4" id="{{ day }}-container" style="display: none;">
+                            <div class="card border-primary">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">⏰ Horários para {{ day_name }}:</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="time-intervals" id="{{ day }}-intervals">
+                                        <!-- Intervalos serão adicionados dinamicamente -->
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 add-interval"
+                                            data-day="{{ day }}">
+                                        ➕ Adicionar outro horário
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Botão de submit -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                💾 Salvar Disponibilidade
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para intervalo de tempo -->
+<template id="time-interval-template">
+    <div class="time-interval mb-3 p-3 border rounded">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <label class="form-label">Início:</label>
+                <select class="form-select start-time" name="{day}_start_{index}">
+                    <option value="">-- Selecionar --</option>
+                    {% for time_val, time_display in time_choices %}
+                    <option value="{{ time_val }}">{{ time_display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Fim:</label>
+                <select class="form-select end-time" name="{day}_end_{index}">
+                    <option value="">-- Selecionar --</option>
+                    {% for time_val, time_display in time_choices %}
+                    <option value="{{ time_val }}">{{ time_display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check mt-4">
+                    <input class="form-check-input all-day-checkbox" type="checkbox">
+                    <label class="form-check-label">Dia todo</label>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-danger mt-3 remove-interval"
+                        style="display: none;">
+                    ❌
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<style>
+.day-checkbox:checked + label {
+    background-color: #0d6efd;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.time-interval {
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.time-interval:hover {
+    background-color: #e9ecef;
+}
+
+.form-check-inline {
+    margin-right: 0.5rem;
+}
+
+.card {
+    border: 1px solid #dee2e6;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const template = document.getElementById('time-interval-template');
+    const dayContainers = document.getElementById('day-containers');
+    let intervalCounters = {};
+
+    // Inicializar contadores para cada dia
+    {% for day, day_name in weekdays %}
+    intervalCounters['{{ day }}'] = 0;
+    {% endfor %}
+
+    // Toggle dos containers de dia
+    document.querySelectorAll('.day-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const day = this.dataset.day;
+            const container = document.getElementById(day + '-container');
+            const intervalsContainer = document.getElementById(day + '-intervals');
+
+            if (this.checked) {
+                container.style.display = 'block';
+                // Adicionar primeiro intervalo automaticamente
+                if (intervalCounters[day] === 0) {
+                    addTimeInterval(day);
+                }
+            } else {
+                container.style.display = 'none';
+                // Limpar intervalos quando desmarcar
+                intervalsContainer.innerHTML = '';
+                intervalCounters[day] = 0;
+            }
+        });
+    });
+
+    // Adicionar intervalo de tempo
+    document.querySelectorAll('.add-interval').forEach(button => {
+        button.addEventListener('click', function() {
+            const day = this.dataset.day;
+            if (intervalCounters[day] < 3) {
+                addTimeInterval(day);
+            } else {
+                alert('Máximo de 3 intervalos por dia atingido.');
+            }
+        });
+    });
+
+    function addTimeInterval(day) {
+        if (intervalCounters[day] >= 3) return;
+
+        const intervalsContainer = document.getElementById(day + '-intervals');
+        const index = intervalCounters[day]++;
+
+        const clone = template.content.cloneNode(true);
+        const intervalDiv = clone.querySelector('.time-interval');
+
+        // Atualizar names e IDs
+        clone.querySelectorAll('[name]').forEach(el => {
+            el.name = el.name.replace('{day}', day).replace('{index}', index);
+        });
+
+        // Configurar checkbox de dia todo
+        const allDayCheckbox = clone.querySelector('.all-day-checkbox');
+        const startSelect = clone.querySelector('.start-time');
+        const endSelect = clone.querySelector('.end-time');
+        const removeBtn = clone.querySelector('.remove-interval');
+
+        allDayCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                startSelect.value = '07:00';
+                endSelect.value = '22:00';
+                startSelect.readOnly = endSelect.readOnly = true;
+                // Adiciona classes para estilo visual
+                startSelect.classList.add('bg-light');
+                endSelect.classList.add('bg-light');
+            } else {
+                startSelect.readOnly = endSelect.readOnly = false;
+                startSelect.classList.remove('bg-light');
+                endSelect.classList.remove('bg-light');
+            }
+        });
+
+        // Mostrar botão de remover se não for o primeiro intervalo
+        if (index > 0) {
+            removeBtn.style.display = 'block';
+            removeBtn.addEventListener('click', function() {
+                intervalDiv.remove();
+                intervalCounters[day]--;
+                updateRemoveButtons(day);
+            });
+        }
+
+        intervalsContainer.appendChild(clone);
+        updateRemoveButtons(day);
+    }
+
+    function updateRemoveButtons(day) {
+        const intervals = document.querySelectorAll(`#${day}-intervals .time-interval`);
+        intervals.forEach((interval, index) => {
+            const removeBtn = interval.querySelector('.remove-interval');
+            if (removeBtn) {
+                removeBtn.style.display = index === 0 ? 'none' : 'block';
+            }
+        });
+
+        // Mostrar/ocultar botão de adicionar baseado no limite
+        const addBtn = document.querySelector(`.add-interval[data-day="${day}"]`);
+        if (addBtn) {
+            addBtn.style.display = intervalCounters[day] < 3 ? 'block' : 'none';
+        }
+    }
+
+    // Validação do formulário
+    document.querySelector('form').addEventListener('submit', function(e) {
+        let hasErrors = false;
+        const errorMessages = [];
+
+        // Verificar se pelo menos um dia foi selecionado
+        const selectedDays = document.querySelectorAll('.day-checkbox:checked');
+        if (selectedDays.length === 0) {
+            errorMessages.push('Selecione pelo menos um dia da semana');
+            hasErrors = true;
+        }
+
+        // Verificar intervalos preenchidos
+        selectedDays.forEach(checkbox => {
+            const day = checkbox.dataset.day;
+            const intervals = document.querySelectorAll(`#${day}-intervals .time-interval`);
+            let hasValidInterval = false;
+
+            intervals.forEach(interval => {
+                const start = interval.querySelector('.start-time').value;
+                const end = interval.querySelector('.end-time').value;
+
+                if (start && end) {
+                    hasValidInterval = true;
+                    if (start >= end) {
+                        errorMessages.push(`Horário inválido em ${day}: início deve ser antes do fim`);
+                        hasErrors = true;
+                    }
+                }
+            });
+
+            if (!hasValidInterval) {
+                errorMessages.push(`Adicione pelo menos um horário válido para ${day}`);
+                hasErrors = true;
+            }
+        });
+
+        if (hasErrors) {
+            e.preventDefault();
+            alert('Erros encontrados:\n' + errorMessages.join('\n'));
+        }
+    });
+});
+</script>
+{% endblock %}

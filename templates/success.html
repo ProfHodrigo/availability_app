@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="alert alert-success">
+    <h4>Disponibilidade cadastrada com sucesso!</h4>
+    <p>Sua disponibilidade foi salva no sistema.</p>
+</div>
+
+<div class="d-grid gap-2 d-md-flex">
+    <a href="{{ url_for('index') }}" class="btn btn-primary me-md-2">Cadastrar Nova Disponibilidade</a>
+    <a href="{{ url_for('common_availability') }}" class="btn btn-success">Ver Horários em Comum</a>
+</div>
+{% endblock %}

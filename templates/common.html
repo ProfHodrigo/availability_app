@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Horários em Comum</h2>
+
+{% if common_availability %}
+<div class="row">
+    {% for day, intervals in common_availability.items() %}
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <strong>{{ weekday_names[day] }}</strong>
+            </div>
+            <div class="card-body">
+                {% for start, end in intervals %}
+                <div class="mb-2">
+                    {{ start.strftime('%H:%M') }} - {{ end.strftime('%H:%M') }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    Não há horários em comum entre todos os usuários.
+</div>
+{% endif %}
+
+<a href="{{ url_for('index') }}" class="btn btn-primary">Voltar ao Cadastro</a>
+{% endblock %}
