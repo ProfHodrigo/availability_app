@@ -1,12 +1,25 @@
 import os
 from datetime import time
+import re
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24)
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
+
+    # Configuração do banco de dados com fallback
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        SQLALCHEMY_DATABASE_URI = database_url
+    else:
+        # Fallback para SQLite local
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "app.db")}'
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 
 # Dias da semana disponíveis
 WEEKDAYS = [
